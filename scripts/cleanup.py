@@ -172,11 +172,14 @@ def delete_engine_evaluators(api_key: str) -> None:
 # ── Optional: delete the entire LangSmith project ─────────────────────────────
 
 def delete_project() -> None:
-    """Delete project + datasets + every chat-lc-lite-* Context Hub repo.
+    """Delete this presenter's project + datasets + Context Hub repo.
 
     Removes all traces, online evaluators on the project, Engine issue state,
-    both demo datasets, and any Context Hub agent / skill whose handle starts
-    with `chat-lc-lite-` (sweep catches leftovers from prior renames).
+    both demo datasets, and the presenter's Context Hub agent repo.
+
+    Datasets and Context Hub repos are matched by the `-<presenter>` suffix
+    so running `--full` in a shared LangSmith workspace never deletes another
+    demoer's resources.
     """
     from langsmith import Client
 
@@ -220,9 +223,14 @@ def delete_project() -> None:
         except Exception as e:
             print(f"  Dataset delete failed for '{d.name}': {e}")
 
-    # 3. Context Hub — sweep every chat-lc-lite-* agent and skill (catches
-    # the current ones plus any leftovers from prior renames).
-    print(f"\n[*] Deleting Context Hub repos (chat-lc-lite-* sweep)...")
+    # 3. Context Hub — delete only THIS presenter's repos. The agent repo is
+    # `chat-lc-lite-agent-<presenter>`, so the same `chat-lc-lite-*` +
+    # `-<presenter>` suffix match used for datasets above scopes this safely.
+    # The bare `chat-lc-lite-` prefix and the hardcoded generic skill handles
+    # (release-notes-skill, etc.) are deliberately NOT used: those handles are
+    # seeded un-scoped in utils/context_hub.py and would delete other demoers'
+    # identically-named repos in a shared workspace.
+    print(f"\n[*] Deleting Context Hub repos (presenter '{DEMO_PRESENTER}')...")
     api_key = os.environ.get("LANGSMITH_API_KEY", "")
     workspace_id = os.environ.get("LANGSMITH_WORKSPACE_ID", "")
     H = {"x-api-key": api_key}
@@ -237,7 +245,7 @@ def delete_project() -> None:
             continue
         for repo in r.json().get("repos", []):
             handle = repo.get("repo_handle", "")
-            if handle.startswith("chat-lc-lite-") or handle in {"release-notes-skill", "support-ticket-triage-skill", "pr-review-summary-skill"}:
+            if handle.startswith("chat-lc-lite-") and handle.endswith(presenter_suffix):
                 try:
                     delete_fn(handle)
                     print(f"  Deleted {repo_type} '{handle}'.")
