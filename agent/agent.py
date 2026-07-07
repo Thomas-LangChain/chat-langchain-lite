@@ -45,7 +45,8 @@ def build_agent():
         # temperature=0 for deterministic, reproducible demo behavior — the
         # intentional bugs (tone, scope, truncation) come from the prompt and
         # max_tokens, not sampling, so pinning temperature keeps traces consistent.
-        model=ChatAnthropic(model=_model_id(), max_tokens=300, temperature=0),
+        # 4096 allows complete responses; length is shaped by the system prompt, not a truncation cap. 300 was far below one bullet-listed answer and caused ~93% of responses to be cut off mid-sentence.
+        model=ChatAnthropic(model=_model_id(), max_tokens=4096, temperature=0),
         tools=TOOLS,
         system_prompt=SYSTEM_PROMPT,
         middleware=[_readonly_context_hub_fs()],
